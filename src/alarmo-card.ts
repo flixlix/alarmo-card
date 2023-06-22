@@ -48,10 +48,10 @@ export class AlarmoCard extends SubscribeMixin(LitElement) {
   private _alarmoConfig?: AlarmoConfig;
 
   @state()
-  private _input: string = '';
+  private _input = '';
 
   @state()
-  private warning: string = '';
+  private warning = '';
 
   @state()
   private area_id: string | number | null | undefined = undefined;
@@ -64,7 +64,7 @@ export class AlarmoCard extends SubscribeMixin(LitElement) {
 
   subscribedEntities: string[] = [];
 
-  _codeClearTimer: number = 0;
+  _codeClearTimer = 0;
 
   public static async getConfigElement() {
     await import('./alarmo-card-editor');
@@ -122,7 +122,7 @@ export class AlarmoCard extends SubscribeMixin(LitElement) {
     if (this.backendConnection) return;
     fetchEntities(this.hass!)
       .then(res => {
-        let match = res.find(e => e.entity_id == this._config!.entity);
+        const match = res.find(e => e.entity_id == this._config!.entity);
         if (match) this.area_id = match.area_id ? match.area_id : null;
       })
       .then(() => fetchConfig(this.hass!))
@@ -227,6 +227,11 @@ export class AlarmoCard extends SubscribeMixin(LitElement) {
       `;
     }
 
+    const actions =
+      stateObj.state === AlarmStates.Disarmed
+        ? calcSupportedActions(stateObj).filter(e => !calcStateConfig(ActionToState[e], this._config!).hide)
+        : [ArmActions.Disarm];
+
     return html`
       <ha-card>
         ${stateObj.state === AlarmStates.Disarmed
@@ -312,6 +317,7 @@ export class AlarmoCard extends SubscribeMixin(LitElement) {
                 type="password"
                 id="code_input"
                 .inputmode=${this._alarmoConfig?.code_format === FORMAT_NUMBER ? 'numeric' : 'text'}
+                @keydown=${ev => ev.key === 'Enter' && actions.length > 0 && this._handleActionClick(ev, actions[0])}
               ></ha-textfield>
             `}
         ${(!codeRequired(stateObj) && !this._config.keep_keypad_visible) ||
